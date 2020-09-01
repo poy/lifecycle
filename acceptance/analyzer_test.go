@@ -218,8 +218,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.DockerImageRemove(t, appImage)
 			})
 
-			it("restores layer metadata", func() {
-				h.DockerRunAndCopy(t,
+			it("restores app metadata", func() {
+				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
 					analyzeImage,
@@ -228,23 +228,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.WithArgs(analyzerPath, "-daemon", appImage),
 				)
 
-				layerFilenames := []string{
-					"launch-build-cache-layer.sha",
-					"launch-build-cache-layer.toml",
-					"launch-cache-layer.sha",
-					"launch-cache-layer.toml",
-					"launch-layer.sha",
-					"launch-layer.toml",
-					"store.toml",
-				}
-				for _, filename := range layerFilenames {
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
-				}
+				assertLogsAndRestoresAppMetadata(t, copyDir, output)
 			})
 
 			when("skip layers is provided", func() {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-					h.DockerRunAndCopy(t,
+					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
@@ -259,18 +248,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "store.toml"))
-					layerFilenames := []string{
-						"launch-build-cache-layer.sha",
-						"launch-build-cache-layer.toml",
-						"launch-cache-layer.sha",
-						"launch-cache-layer.toml",
-						"launch-layer.sha",
-						"launch-layer.toml",
-					}
-					for _, filename := range layerFilenames {
-						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
-					}
+					assertWritesStoreTomlOnly(t, copyDir, output)
 				})
 			})
 		})
@@ -340,8 +318,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.DockerImageRemove(t, cacheImage)
 					})
 
-					it("uses the provided cache", func() {
-						h.DockerRunAndCopy(t,
+					it("restores cache metadata", func() {
+						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
 							analyzeImage,
@@ -359,17 +337,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							),
 						)
 
-						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+						assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 					})
 				})
 			})
 
 			when("cache directory case", func() {
-				it("uses the provided cache", func() {
+				it("restores cache metadata", func() {
 					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
 
-					h.DockerRunAndCopy(t,
+					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
@@ -386,8 +363,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 				})
 
 				when("the provided cache directory isn't writeable by the CNB user's group", func() {
@@ -473,8 +449,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("app image exists", func() {
-			it("restores layer metadata", func() {
-				h.DockerRunAndCopy(t,
+			it("restores app metadata", func() {
+				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
 					analyzeImage,
@@ -486,23 +462,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.WithArgs(analyzerPath, appImage),
 				)
 
-				layerFilenames := []string{
-					"launch-build-cache-layer.sha",
-					"launch-build-cache-layer.toml",
-					"launch-cache-layer.sha",
-					"launch-cache-layer.toml",
-					"launch-layer.sha",
-					"launch-layer.toml",
-					"store.toml",
-				}
-				for _, filename := range layerFilenames {
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
-				}
+				assertLogsAndRestoresAppMetadata(t, copyDir, output)
 			})
 
 			when("skip layers is provided", func() {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-					h.DockerRunAndCopy(t,
+					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
@@ -519,25 +484,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "store.toml"))
-					layerFilenames := []string{
-						"launch-build-cache-layer.sha",
-						"launch-build-cache-layer.toml",
-						"launch-cache-layer.sha",
-						"launch-cache-layer.toml",
-						"launch-layer.sha",
-						"launch-layer.toml",
-					}
-					for _, filename := range layerFilenames {
-						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
-					}
+					assertWritesStoreTomlOnly(t, copyDir, output)
 				})
 			})
 
 			when("CNB_REGISTRY_AUTH is not provided", func() {
 				when("DOCKER_CONFIG is set", func() {
-					it("succeeds", func() {
-						h.DockerRunAndCopy(t,
+					it("restores app metadata", func() {
+						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
 							analyzeImage,
@@ -556,7 +510,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							),
 						)
 
-						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id")) // the presence of some-buildpack-id indicates that we were able to retrieve the app image from the registry
+						assertLogsAndRestoresAppMetadata(t, copyDir, output)
 					})
 				})
 			})
@@ -581,8 +535,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.DockerImageRemove(t, cacheImage)
 				})
 
-				it("uses the provided cache", func() {
-					h.DockerRunAndCopy(t,
+				it("restores cache metadata", func() {
+					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
@@ -598,14 +552,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 				})
 
 				when("CNB_REGISTRY_AUTH is not provided", func() {
 					when("DOCKER_CONFIG is set", func() {
-						it("succeeds", func() {
-							h.DockerRunAndCopy(t,
+						it("restores cache metadata", func() {
+							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
 								analyzeImage,
@@ -625,18 +578,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								),
 							)
 
-							h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-							h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 						})
 					})
 				})
 			})
 
 			when("cache directory case", func() {
-				it("uses the provided cache", func() {
+				it("restores cache metadata", func() {
 					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
 
-					h.DockerRunAndCopy(t,
+					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
@@ -652,8 +604,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 				})
 			})
 		})
@@ -694,4 +645,49 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	var analyzedMd lifecycle.AnalyzedMetadata
 	_, err := toml.Decode(string(contents), &analyzedMd)
 	h.AssertNil(t, err)
+}
+
+func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
+	layerFilenames := []string{
+		"launch-build-cache-layer.sha",
+		"launch-build-cache-layer.toml",
+		"launch-cache-layer.sha",
+		"launch-cache-layer.toml",
+		"launch-layer.sha",
+		"launch-layer.toml",
+		"store.toml",
+	}
+	for _, filename := range layerFilenames {
+		h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
+	}
+	layerNames := []string{
+		"launch-build-cache-layer",
+		"launch-cache-layer",
+		"launch-layer",
+	}
+	for _, layerName := range layerNames {
+		h.AssertStringContains(t, output, fmt.Sprintf("Restoring metadata for \"some-buildpack-id:%s\"", layerName))
+	}
+}
+
+func assertLogsAndRestoresCacheMetadata(t *testing.T, dir, output string) {
+	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "some-layer.sha"))
+	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "some-layer.toml"))
+	h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:some-layer\" from cache")
+}
+
+func assertWritesStoreTomlOnly(t *testing.T, dir, output string) {
+	h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", "store.toml"))
+	layerFilenames := []string{
+		"launch-build-cache-layer.sha",
+		"launch-build-cache-layer.toml",
+		"launch-cache-layer.sha",
+		"launch-cache-layer.toml",
+		"launch-layer.sha",
+		"launch-layer.toml",
+	}
+	for _, filename := range layerFilenames {
+		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
+	}
+	h.AssertStringContains(t, output, "Skipping buildpack layer analysis")
 }
